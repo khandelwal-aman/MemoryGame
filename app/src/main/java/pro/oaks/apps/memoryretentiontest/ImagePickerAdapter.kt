@@ -13,8 +13,13 @@ import kotlin.math.min
 class ImagePickerAdapter(
     private val context: Context,
     private val imagesUris: List<Uri>,
-    private val boardSize: BoardSize
+    private val boardSize: BoardSize,
+    private val imageClickListener: ImageClickListener
 ) : RecyclerView.Adapter<ImagePickerAdapter.ViewHolder>() {
+
+    interface ImageClickListener{
+        fun onPlaceholderClicked()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(context).inflate(R.layout.card_image, parent, false)
@@ -46,7 +51,7 @@ class ImagePickerAdapter(
         }
         fun bind() {
             ivCustomImage.setOnClickListener {
-                // launch intent to select photos
+                imageClickListener.onPlaceholderClicked()
             }
         }
 
