@@ -2,6 +2,7 @@ package pro.oaks.apps.memoryretentiontest.utils
 
 import pro.oaks.apps.memoryretentiontest.R
 
+const val EXTRA_GAME_NAME= "EXTRA_GAME_NAME"
 const val EXTRA_BOARD_SIZE = "EXTRA_BOARD_SIZE"
 val DEFAULT_ICONS = listOf(
     R.drawable.ic_face,

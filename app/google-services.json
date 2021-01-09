@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "76214483631",
+    "project_id": "my-memory-3c68e",
+    "storage_bucket": "my-memory-3c68e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:76214483631:android:bf109a1c2f40a2eeb7325a",
+        "android_client_info": {
+          "package_name": "pro.oaks.apps.memoryretentiontest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "76214483631-4sgomagtun1bnd9vollfp0jih752lnco.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMOvDcfNzjhQg5qKYid7TLq-E5xFs37Vc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "76214483631-4sgomagtun1bnd9vollfp0jih752lnco.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
