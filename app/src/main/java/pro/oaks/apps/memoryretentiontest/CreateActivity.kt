@@ -46,10 +46,10 @@ class CreateActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var pbUploading: ProgressBar
 
-    private lateinit var adapter: ImagePickerAdapter
+    private lateinit var imagePickerAdapter: ImagePickerAdapter
     private lateinit var boardSize:BoardSize
     private var numImagesRequired = -1
-    private var chosenImagesUris = mutableListOf<Uri>()
+    private var chosenImageUris = mutableListOf<Uri>()
     private val storage = Firebase.storage
     private val db = Firebase.firestore
 
@@ -70,87 +70,81 @@ class CreateActivity : AppCompatActivity() {
         btnSave.setOnClickListener {
             saveDataToFirebase()
         }
-
-        etGameName.filters = arrayOf(InputFilter.LengthFilter(MAX_GAME_NAME_LENGTH))
-        etGameName.addTextChangedListener(object: TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
+        etGameName.filters = arrayOf(InputFilter.LengthFilter(14))
+        etGameName.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 btnSave.isEnabled = shouldEnableSaveButton()
             }
 
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
-
-        adapter = ImagePickerAdapter(this, chosenImagesUris, boardSize, object: ImagePickerAdapter.ImageClickListener{
+        imagePickerAdapter = ImagePickerAdapter(this, chosenImageUris, boardSize, object: ImagePickerAdapter.ImageClickListener {
             override fun onPlaceholderClicked() {
-                if (isPermissionGranted(this@CreateActivity, READ_PHOTOS_PERMISSION)){
+                // Need READ_EXTERNAL_FILES permission
+                if (isPermissionGranted(this@CreateActivity, READ_PHOTOS_PERMISSION)) {
                     launchIntentForPhotos()
-                } else{
+                } else {
                     requestPermission(this@CreateActivity, READ_PHOTOS_PERMISSION, READ_EXTERNAL_PHOTO_CODE)
                 }
             }
         })
-        rvImagePicker.adapter = adapter
+        rvImagePicker.adapter = imagePickerAdapter
         rvImagePicker.setHasFixedSize(true)
-        rvImagePicker.layoutManager = GridLayoutManager(this,boardSize.getWidth())
-    }
-
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        if(requestCode == READ_EXTERNAL_PHOTO_CODE){
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                launchIntentForPhotos()
-            } else{
-                Toast.makeText(this,"In order to create a custom game, you need to provide access to your photos", Toast.LENGTH_LONG).show()
-            }
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        rvImagePicker.layoutManager = GridLayoutManager(this, boardSize.getWidth())
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home){
+        if (item.itemId == android.R.id.home) {
             finish()
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == READ_EXTERNAL_PHOTO_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                launchIntentForPhotos()
+            } else {
+                Toast.makeText(this, "In order to create a custom game, you need to provide access to your photos", Toast.LENGTH_LONG).show()
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if(requestCode == PICK_PHOTO_CODE || resultCode != Activity.RESULT_OK || data == null){
-            Log.w(TAG, "Did not get data back from the launched activity, user likely canceled flow!")
+        if (requestCode != PICK_PHOTO_CODE || resultCode != Activity.RESULT_OK || data == null) {
+            Log.w(TAG, "Did not get data back from the launched activity, user likely canceled flow")
             return
         }
+        Log.i(TAG, "onActivityResult")
         val selectedUri = data.data
         val clipData = data.clipData
-        if(clipData != null){
-            Log.i(TAG,"clipData numImages ${clipData.itemCount}: $clipData")
-            for(i in 0 until clipData.itemCount){
-                val clipitem = clipData.getItemAt(i)
-                if(chosenImagesUris.size < numImagesRequired){
-                    chosenImagesUris.add(clipitem.uri)
+        if (clipData != null) {
+            Log.i(TAG, "clipData numImages ${clipData.itemCount}: $clipData")
+            for (i in 0 until clipData.itemCount) {
+                val clipItem = clipData.getItemAt(i)
+                if (chosenImageUris.size < numImagesRequired) {
+                    chosenImageUris.add(clipItem.uri)
                 }
             }
-        } else if(selectedUri != null){
-            Log.i(TAG,"data: $selectedUri")
-            chosenImagesUris.add(selectedUri)
+        } else if (selectedUri != null) {
+            Log.i(TAG, "data: $selectedUri")
+            chosenImageUris.add(selectedUri)
         }
-        adapter.notifyDataSetChanged()
-        supportActionBar?.title = "Choose pics (${chosenImagesUris.size} / $numImagesRequired)"
+        imagePickerAdapter.notifyDataSetChanged()
+        supportActionBar?.title = "Choose pics (${chosenImageUris.size} / $numImagesRequired)"
         btnSave.isEnabled = shouldEnableSaveButton()
     }
 
     private fun saveDataToFirebase() {
+        Log.i(TAG, "Going to save data to Firebase")
+        val customGameName = etGameName.text.toString().trim()
         btnSave.isEnabled = false
-        val customGameName = etGameName.text.toString()
-        // check that we're not over writing someone else's data
         db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
-            if(document != null && document.data != null){
+            if (document != null && document.data != null) {
                 AlertDialog.Builder(this)
                     .setTitle("Name taken")
                     .setMessage("A game already exists with the name '$customGameName'. Please choose another")
@@ -160,43 +154,40 @@ class CreateActivity : AppCompatActivity() {
             } else {
                 handleImageUploading(customGameName)
             }
-        }.addOnFailureListener { exception ->
+        }.addOnFailureListener {exception ->
             Log.e(TAG, "Encountered error while saving memory game", exception)
-            Toast.makeText(this, "Encountered error while saving memory game", Toast.LENGTH_LONG).show()
-            btnSave.isEnabled = true
+            Toast.makeText(this, "Encountered error while saving memory game", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun handleImageUploading(gameName: String) {
         pbUploading.visibility = View.VISIBLE
-        Log.i(TAG,"saveDataToFirebase")
-        var didEncounterError = false
         val uploadedImageUrls = mutableListOf<String>()
-        for((index, photoUri) in chosenImagesUris.withIndex()){
+        var didEncounterError = false
+        for ((index, photoUri) in chosenImageUris.withIndex()) {
             val imageByteArray = getImageByteArray(photoUri)
             val filePath = "images/$gameName/${System.currentTimeMillis()}-${index}.jpg"
             val photoReference = storage.reference.child(filePath)
             photoReference.putBytes(imageByteArray)
-                .continueWithTask{ photoUploadTask ->
-                    Log.i(TAG, "Uploaded bytes: ${photoUploadTask.result?.bytesTransferred}")
+                .continueWithTask { photoUploadTask ->
+                    Log.i(TAG, "uploaded bytes: ${photoUploadTask.result?.bytesTransferred}")
                     photoReference.downloadUrl
                 }.addOnCompleteListener { downloadUrlTask ->
-                    if(!downloadUrlTask.isSuccessful){
+                    if (!downloadUrlTask.isSuccessful) {
                         Log.e(TAG, "Exception with Firebase storage", downloadUrlTask.exception)
                         Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show()
                         didEncounterError = true
                         return@addOnCompleteListener
                     }
-                    if(didEncounterError){
+                    if (didEncounterError) {
                         pbUploading.visibility = View.GONE
                         return@addOnCompleteListener
                     }
-
+                    pbUploading.progress = uploadedImageUrls.size * 100 / chosenImageUris.size
                     val downloadUrl = downloadUrlTask.result.toString()
                     uploadedImageUrls.add(downloadUrl)
-                    pbUploading.progress = uploadedImageUrls.size * 100 / chosenImagesUris.size
-                    Log.i(TAG, "Finished uploading $photoUri, num uploaded ${uploadedImageUrls.size}")
-                    if (uploadedImageUrls.size == chosenImagesUris.size){
+                    Log.i(TAG, "Finished uploading $photoUri, Num uploaded: ${uploadedImageUrls.size}")
+                    if (uploadedImageUrls.size == chosenImageUris.size) {
                         handleAllImagesUploaded(gameName, uploadedImageUrls)
                     }
                 }
@@ -204,20 +195,19 @@ class CreateActivity : AppCompatActivity() {
     }
 
     private fun handleAllImagesUploaded(gameName: String, imageUrls: MutableList<String>) {
-        // todo
         db.collection("games").document(gameName)
             .set(mapOf("images" to imageUrls))
             .addOnCompleteListener { gameCreationTask ->
                 pbUploading.visibility = View.GONE
-                if(!gameCreationTask.isSuccessful){
+                if (!gameCreationTask.isSuccessful) {
                     Log.e(TAG, "Exception with game creation", gameCreationTask.exception)
-                    Toast.makeText(this, "Failed game creation", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Failed game creation", Toast.LENGTH_SHORT).show()
                     return@addOnCompleteListener
                 }
                 Log.i(TAG, "Successfully created game $gameName")
                 AlertDialog.Builder(this)
                     .setTitle("Upload complete! Let's play your game '$gameName'")
-                    .setPositiveButton("OK"){_, _ ->
+                    .setPositiveButton("OK") { _, _ ->
                         val resultData = Intent()
                         resultData.putExtra(EXTRA_GAME_NAME, gameName)
                         setResult(Activity.RESULT_OK, resultData)
@@ -227,26 +217,25 @@ class CreateActivity : AppCompatActivity() {
     }
 
     private fun getImageByteArray(photoUri: Uri): ByteArray {
-        val originalBitmap = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
+        val originalBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val source = ImageDecoder.createSource(contentResolver, photoUri)
             ImageDecoder.decodeBitmap(source)
-        } else{
+        } else {
             MediaStore.Images.Media.getBitmap(contentResolver, photoUri)
         }
         Log.i(TAG, "Original width ${originalBitmap.width} and height ${originalBitmap.height}")
         val scaledBitmap = BitmapScaler.scaleToFitHeight(originalBitmap, 250)
-        Log.i(TAG, "Original width ${scaledBitmap.width} and height ${scaledBitmap.height}")
+        Log.i(TAG, "Scaled width ${scaledBitmap.width} and height ${scaledBitmap.height}")
         val byteOutputStream = ByteArrayOutputStream()
         scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 60, byteOutputStream)
         return byteOutputStream.toByteArray()
     }
 
     private fun shouldEnableSaveButton(): Boolean {
-        // check if button should be enabled
-        if (chosenImagesUris.size != numImagesRequired){
+        if (chosenImageUris.size != numImagesRequired) {
             return false
         }
-        if(etGameName.text.isBlank() || etGameName.text.length < MIN_GAME_NAME_LENGTH){
+        if (etGameName.text.isBlank() || etGameName.text.length < 3) {
             return false
         }
         return true
@@ -255,7 +244,7 @@ class CreateActivity : AppCompatActivity() {
     private fun launchIntentForPhotos() {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = "image/*"
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         startActivityForResult(Intent.createChooser(intent, "Choose pics"), PICK_PHOTO_CODE)
     }
 }
